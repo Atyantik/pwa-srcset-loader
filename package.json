@@ -1,0 +1,57 @@
+{
+  "name": "pwa-srcset-loader",
+  "version": "1.1.0",
+  "description": "Loader which automatically resizes your images in the desired dimensions, and generates light placeholders.",
+  "main": "index.js",
+  "scripts": {
+    "example:simple": "webpack --config example/simple/webpack.config.js",
+    "example:file": "webpack --config example/file/webpack.config.js",
+    "example:optimized": "webpack --config example/optimized/webpack.config.js",
+    "example:loader": "webpack --config example/loader-query/webpack.config.js",
+    "example:bulk": "webpack --config example/loader-query-bulk/webpack.config.js",
+    "example:placeholder": "webpack --config example/placeholder/webpack.config.js",
+    "example:lightweight": "webpack --config example/lightweight/webpack.config.js",
+    "build": "babel src --out-dir lib --copy-files",
+    "build:watch": "npm run build -- --watch",
+    "test": "NODE_ENV=test mocha --compilers js:babel-core/register --reporter spec --check-leaks",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "webpack",
+    "responsive",
+    "image",
+    "srcset",
+    "placeholder"
+  ],
+  "author": "Tim Sebastian <tim.sebastian@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timse/srcset-loader"
+  },
+  "dependencies": {
+    "datauri": "1.0.5",
+    "get-pixels": "3.3.0",
+    "image-size": "0.5.1",
+    "loader-utils": "1.1.0",
+    "mime": "^2.0.3",
+    "sharp": "^0.18.2"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.0",
+    "babel-preset-es2015": "^6.24.0",
+    "chai": "^3.5.0",
+    "chai-spies": "^0.7.1",
+    "dirty-chai": "^1.2.2",
+    "eslint": "^3.16.1",
+    "eslint-config-airbnb-base": "11.1.2",
+    "eslint-plugin-import": "2.2.0",
+    "file-loader": "^1.1.4",
+    "image-webpack-loader": "3.3.0",
+    "jsdom": "^9.12.0",
+    "lodash": "^4.17.4",
+    "memory-fs": "^0.4.1",
+    "mocha": "^3.2.0",
+    "webpack": "2.3.2"
+  }
+}
