@@ -1,18 +1,20 @@
-# `srcset`-loader for webpack 2
-[![Build Status](https://travis-ci.org/timse/srcset-loader.svg?branch=master)](https://travis-ci.org/timse/srcset-loader)
+This repository is a fork of https://github.com/timse/srcset-loader, with support for webp support. All the work credit goes to author of the repository
 
-A super flexible and easily chainable (with other loaders like `file-loader` or `image-webpack-loader`) srcset loader for webpack 2.
+# `pwa-srcset`-loader for webpack 2/3
+[![Build Status](https://travis-ci.org/Atyantik/pwa-srcset-loader.svg?branch=master)](https://travis-ci.org/Atyantik/pwa-srcset-loader)
+
+A super flexible and easily chainable (with other loaders like `file-loader` or `image-webpack-loader`) srcset loader for webpack 2/3.
 
 Its purpose is to automatically resize your images to the requested dimension*s* and return those as an srcSet.
 
 ## Installation
 
-`npm i -D srcset-loader`
+`npm i -D pwa-srcset-loader`
 
 ## Usage
 
 There are basically two parts to configure, one part is the loader itself, the other part is the images you want to have a `srcset` for.
-Instead of specifying the loader inline, you specify which images should be loaded with the `srcset-loader` in your webpack config,
+Instead of specifying the loader inline, you specify which images should be loaded with the `pwa-srcset-loader` in your webpack config,
 then specify the sizes for the `srcset` on the resource itself.
 
 e.g. your config could have a loader specified like this, notice the `?sizes` at the end of the resource match
@@ -29,7 +31,7 @@ const webpackConfig = {
       resourceQuery: /[?&](sizes|placeholder)(=|&|\[|$)/,
 
       use: [
-        'srcset-loader',
+        'pwa-srcset-loader',
 
         // any other loader
         'file-loader?hash=sha512&digest=hex&name=[hash].[ext]',
@@ -54,9 +56,9 @@ Basically all this loader does is creating multiple requests for each `srcset` i
 
 ### Why is the `srcset` loader before the other loaders
 
-Its actually very important that you add the `srcset-loader` before all the other loaders, as the `srcset-loader` uses
+Its actually very important that you add the `pwa-srcset-loader` before all the other loaders, as the `pwa-srcset-loader` uses
 webpack's *pitch* mechanism to split your import request into multiple import request which will all use the loaders
-specified after `srcset-loader`.
+specified after `pwa-srcset-loader`.
 
 Simplified it works something like this:
 
@@ -67,13 +69,13 @@ const someSrcSet = require('./someImage.jpg?sizes=800w+500w+200w');
 //----------------------------------------
 
 // the srcset loader gets this *single* request that actually looks something like this:
-const someSrcSet = require('srcset-loader!url-loader!image-webpack-loader!./someImage.jpg?sizes=800w+500w+200w');
+const someSrcSet = require('pwa-srcset-loader!url-loader!image-webpack-loader!./someImage.jpg?sizes=800w+500w+200w');
 
 // and splits it up into *three* requests looking more like this:
 const someSrcSet = [
-  require('url-loader!image-webpack-loader!srcset-loader/resize!./someImage.jpg?size=800'),
-  require('url-loader!image-webpack-loader!srcset-loader/resize!./someImage.jpg?size=500'),
-  require('url-loader!image-webpack-loader!srcset-loader/resize!./someImage.jpg?size=200'),
+  require('url-loader!image-webpack-loader!pwa-srcset-loader/resize!./someImage.jpg?size=800'),
+  require('url-loader!image-webpack-loader!pwa-srcset-loader/resize!./someImage.jpg?size=500'),
+  require('url-loader!image-webpack-loader!pwa-srcset-loader/resize!./someImage.jpg?size=200'),
 ];
 ```
 
@@ -82,11 +84,11 @@ Thats all :), simple and robust.
 ### Can I use `srcset`-loader inline?
 Yes you can, but why? Seriously why? Please write an issue.
 
-## `srcset-loader` options
+## `pwa-srcset-loader` options
 
 ### `sizes`
 
-`sizes` is the main feature of the srcset-loader, you use this option to specify the different image sizes you wish to import.
+`sizes` is the main feature of the pwa-srcset-loader, you use this option to specify the different image sizes you wish to import.
 
 You can either specify the different sizes as a standard array (`?sizes[]=100w&sizes[]=200w`) or using the less verbose, srcset-specific, syntax (`?sizes=100w+200w`)
 
@@ -102,9 +104,9 @@ This will remove any property that can be computed at runtime in order to reduce
 
 You can specify the size of the placeholder as the value of the option (e.g. `placeholder=12`). By default, the size is 20px (width).
 
-## Results of an image loaded with srcset-loader
+## Results of an image loaded with pwa-srcset-loader
 
-An image imported with the `srcset-loader` returns an Object which contains the following properties:
+An image imported with the `pwa-srcset-loader` returns an Object which contains the following properties:
 
 ### `srcSet: string`
 
@@ -163,3 +165,5 @@ image.placeholder => {
 check the placeholder example for a possible use case.
 
 *Note: You can use `placeholder` on its own, without specifying `sizes`.*
+
+Powered by [Atyantik Technologies Private Limited](https://www.atyantik.com)
