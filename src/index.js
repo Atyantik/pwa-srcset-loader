@@ -185,7 +185,7 @@ srcSetLoader.pitch = function srcSetLoaderPitch(remainingRequest) {
   const [loaders, resource] = splitRemainingRequest(remainingRequest);
   const ext = path.extname(resource).substr(1);
 
-  const outputString = createResourceObjectString(
+  let outputString = createResourceObjectString(
     loaderQuery, 
     sizes, 
     loaders, 
