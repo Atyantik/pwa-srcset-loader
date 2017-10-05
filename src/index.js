@@ -185,7 +185,7 @@ srcSetLoader.pitch = function srcSetLoaderPitch(remainingRequest) {
   const [loaders, resource] = splitRemainingRequest(remainingRequest);
   const ext = path.extname(resource).substr(1);
 
-  const defaultOutputString = createResourceObjectString(
+  const outputString = createResourceObjectString(
     loaderQuery, 
     sizes, 
     loaders, 
@@ -195,44 +195,43 @@ srcSetLoader.pitch = function srcSetLoaderPitch(remainingRequest) {
     lightweight
   );
   
+  if (ext.toLowerCase() !== "webp") {
+    let wepbLoaders = loaders.slice(0);
+    let fileLoader = _.find(wepbLoaders, loader => {
+      return loader.indexOf("file-loader") >=0 ;
+    });
+    let fileLoaderIndex = _.findIndex(wepbLoaders, loader => {
+      return loader.indexOf("file-loader") >=0 ;
+    });
+    let webpLoader = null;
 
-  let wepbLoaders = loaders.slice(0);
-  let fileLoader = _.find(wepbLoaders, loader => {
-    return loader.indexOf("file-loader") >=0 ;
-  });
-  let fileLoaderIndex = _.findIndex(wepbLoaders, loader => {
-    return loader.indexOf("file-loader") >=0 ;
-  });
-  let webpLoader = null;
-
-  if (!fileLoader) {
-   fileLoader = "file-loader?name=[hash].[ext].ext";
-   webpLoader = "webp-loader?quality=80";
-   wepbLoaders.push(fileLoader);
-   wepbLoaders.push(webpLoader); 
-  } else {
-    let nameMatch = fileLoader.match(/name=([^&]*)&?/);
-    if ( nameMatch && nameMatch.length >=2 ){
-      wepbLoaders.splice(fileLoaderIndex, 1, fileLoader.replace(nameMatch[1], `${nameMatch[1]}.webp`));
-      webpLoader = "webp-loader?{quality:80}";
+    if (!fileLoader) {
+     fileLoader = "file-loader?name=[hash].[ext].ext";
+     webpLoader = "webp-loader?quality=80";
+     wepbLoaders.push(fileLoader);
+     wepbLoaders.push(webpLoader); 
+    } else {
+      let nameMatch = fileLoader.match(/name=([^&]*)&?/);
+      if ( nameMatch && nameMatch.length >=2 ){
+        wepbLoaders.splice(fileLoaderIndex, 1, fileLoader.replace(nameMatch[1], `${nameMatch[1]}.webp`));
+        webpLoader = "webp-loader?{quality:80}";
+      }
     }
+    if (webpLoader) {
+      wepbLoaders.push(webpLoader);
+    }
+    outputString = `${outputString}, ${createResourceObjectString(
+      loaderQuery, 
+      sizes, 
+      wepbLoaders, 
+      resource,
+      "webp", 
+      placeholder, 
+      lightweight
+    )}`;
   }
-  if (webpLoader) {
-    wepbLoaders.push(webpLoader);
-  }
-  const webpOutputString = createResourceObjectString(
-    loaderQuery, 
-    sizes, 
-    wepbLoaders, 
-    resource,
-    "webp", 
-    placeholder, 
-    lightweight
-  );
 
-  return `
-module.exports = [${webpOutputString}, ${defaultOutputString}];
-`;
+  return `module.exports = [${outputString}];`;
 };
 
 // webpack pitch loaders expect commonJS
