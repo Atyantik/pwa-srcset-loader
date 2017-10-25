@@ -51,8 +51,8 @@ function createPlaceholderRequest(resource, size, lightweight) {
   if (!Number.isNaN(actualSize)) {
     loaderOptions.query.size = actualSize;
   }
-
-  return `require('!!${url.format(loaderOptions)}!${resource}')`;
+  const placeholderRequest = ['!', url.format(loaderOptions), resource].join('!');
+  return `require(${JSON.stringify(placeholderRequest)})`;
 }
 
 function toNumber(item) {
