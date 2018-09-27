@@ -2,5 +2,5 @@ language: node_js
 node_js:
   - "stable"
 before_install:
-  - sudo apt-get install -y zlib1g-dev libpng-dev libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev build-essential g++
+  - sudo apt-get install -y nasm zlib1g-dev libpng-dev libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev build-essential g++
 script: npm test
