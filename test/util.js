@@ -71,7 +71,6 @@ export function makeCompiler({ rule, files }) {
 export function runTest(compiler, assert) {
   return new Promise((resolve, reject) => {
     compiler.run((err, stats) => {
-      console.log(err, stats);
       if (err || stats.compilation.errors.length) {
         reject(err || new Error(stats.compilation.errors));
         return;
