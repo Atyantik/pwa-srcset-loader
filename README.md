@@ -1,6 +1,6 @@
 This repository is a fork of https://github.com/timse/srcset-loader, with support for webp support. All the work credit goes to author of the repository
 
-# `pwa-srcset`-loader for webpack 2/3
+# `pwa-srcset`-loader for webpack 4.X 
 [![Build Status](https://travis-ci.org/Atyantik/pwa-srcset-loader.svg?branch=master)](https://travis-ci.org/Atyantik/pwa-srcset-loader)
 
 A super flexible and easily chainable (with other loaders like `file-loader` or `image-webpack-loader`) srcset loader for webpack 2/3.
