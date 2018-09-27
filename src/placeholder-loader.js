@@ -29,7 +29,8 @@ function getColor(buffer, imageType) {
 
   return resizeImage(buffer, 2, 2)
     .then((shrinkedImageBuffer) => getPixelsAsync(shrinkedImageBuffer, type))
-    .then(color => {
+    .then((c) => {
+      const color = [...c];
       color[3] = Math.round(color[3] / 255 * 1000) / 1000;
       return color;
     });
@@ -57,8 +58,7 @@ function createPlaceholder(content, options) {
           <image width="100%" height="100%" xlink:href="${imageUrl}" filter="url(#x)"/>
         </svg>`
       );
-
-      return bufferToDataUri('.svg', new Buffer(blurredImage, 'utf8'));
+      return bufferToDataUri('.svg', Buffer.from(blurredImage, 'utf8'));
     })
     .then((url) => {
       placeholderUrl = url;
@@ -66,10 +66,8 @@ function createPlaceholder(content, options) {
       return getColor(content, size.type);
     })
     .then((color) => {
-    
       // Use the size of the unresized image to calculate the exact ratio
       const originalContentSize = imageSize(content);
-    
       return {
         color,
         url: placeholderUrl,

@@ -9,6 +9,7 @@ export const ROOT_DIR = path.resolve(__dirname);
 const BUNDLE = 'bundle.js';
 
 const BASE_CONFIG = {
+  mode: 'production',
   entry: path.join(ROOT_DIR, 'main.js'),
   output: {
     filename: BUNDLE,
@@ -16,7 +17,7 @@ const BASE_CONFIG = {
   },
   resolveLoader: {
     alias: {
-      'srcset-loader': path.resolve(__dirname, '../src/index'),
+      'pwa-srcset-loader': path.resolve(__dirname, '../src/index'),
     },
   },
 };
@@ -56,6 +57,7 @@ export function makeCompiler({ rule, files }) {
     };
   });
 
+  // eslint-disable-next-line
   for (const fileName of Object.keys(files)) {
     const filePath = path.join(ROOT_DIR, fileName);
 
@@ -66,17 +68,10 @@ export function makeCompiler({ rule, files }) {
   return compiler;
 }
 
-const JSDOM_HTML = `
-<!DOCTYPE html>
-<html>
-  <head></head>
-  <body></body>
-</html>
-`;
-
 export function runTest(compiler, assert) {
   return new Promise((resolve, reject) => {
     compiler.run((err, stats) => {
+      console.log(err, stats);
       if (err || stats.compilation.errors.length) {
         reject(err || new Error(stats.compilation.errors));
         return;
@@ -84,30 +79,34 @@ export function runTest(compiler, assert) {
 
       const bundleJs = stats.compilation.assets[BUNDLE].source();
 
-      jsdom.env({
-        html: JSDOM_HTML,
-        src: [bundleJs],
-        virtualConsole: jsdom.createVirtualConsole().sendTo(console),
-        done(err2, window) {
-          if (err2) {
-            reject(err2);
-            return;
-          }
-
-          const result = assert(window);
-
-          function cleanUp() {
-            window.close();
-            resolve();
-          }
-
-          if (result && result.then) {
-            result.then(cleanUp);
-          } else {
-            cleanUp();
-          }
-        },
+      const { JSDOM } = jsdom;
+      const dom = new JSDOM(`
+        <!DOCTYPE html>
+        <html>
+          <head></head>
+          <body>
+            <script>${bundleJs}</script>
+          </body>
+        </html>
+        `, {
+        runScripts: 'dangerously',
+        resources: 'usable',
+        virtualConsole: (new jsdom.VirtualConsole()).sendTo(console),
       });
+      const { window } = dom;
+      window.onload = function () {
+        const result = assert(window);
+        function cleanUp() {
+          window.close();
+          resolve();
+        }
+
+        if (result && result.then) {
+          result.then(cleanUp);
+        } else {
+          cleanUp();
+        }
+      };
     });
   });
 }

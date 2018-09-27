@@ -1,7 +1,6 @@
 import url from 'url';
 import path from 'path';
-import mime from "mime";
-import _ from "lodash";
+import mime from 'mime';
 import { parseQuery } from './util';
 
 const DEFAULT_SIZE = 'default';
@@ -39,6 +38,13 @@ function createResizeRequest(size, existingLoaders, resource) {
   return `require(${JSON.stringify(remainingRequest)})`;
 }
 
+function toNumber(item) {
+  if (typeof item !== 'string') {
+    return Number.NaN;
+  }
+  return Number(item);
+}
+
 function createPlaceholderRequest(resource, size, lightweight) {
   const loaderOptions = {
     pathname: path.join(__dirname, './placeholder-loader'),
@@ -55,14 +61,6 @@ function createPlaceholderRequest(resource, size, lightweight) {
   return `require(${JSON.stringify(placeholderRequest)})`;
 }
 
-function toNumber(item) {
-  if (typeof item !== 'string') {
-    return Number.NaN;
-  }
-
-  return Number(item);
-}
-
 function forEach(items, cb) {
   if (Array.isArray(items)) {
     return items.forEach(cb);
@@ -71,12 +69,12 @@ function forEach(items, cb) {
   return cb(items);
 }
 
-function buildSources(sizes, loaders, resource) {  
+function buildSources(sizes, loaders, resource) {
   const sources = {};
 
   forEach(sizes, (size) => {
     if (size != null && size !== DEFAULT_SIZE && !/\d+w/.test(size)) {
-      throw new TypeError(`srcset-loader: Received size "${size}" does not match the format "\\d+w" nor "${DEFAULT_SIZE}"`);
+      throw new TypeError(`pwa-srcset-loader: Received size "${size}" does not match the format "\\d+w" nor "${DEFAULT_SIZE}"`);
     }
 
     const actualSize = size || DEFAULT_SIZE;
@@ -115,7 +113,7 @@ function getSizes(sizes) {
     return sizes.split('+');
   }
 
-  throw new TypeError(`srcset-loader: "?sizes=${sizes}" is invalid - expected a query like "?sizes[]=<size>&sizes[]=..." or "?sizes=<size>+<size>+...".`);
+  throw new TypeError(`pwa-srcset-loader: "?sizes=${sizes}" is invalid - expected a query like "?sizes[]=<size>&sizes[]=..." or "?sizes=<size>+<size>+...".`);
 }
 
 function isLightweight(loaderQuery, resourceQuery) {
@@ -130,13 +128,20 @@ function isLightweight(loaderQuery, resourceQuery) {
   return false;
 }
 
-function createResourceObjectString(loaderQuery, sizes, loaders, resource, ext, placeholder, lightweight) {
-
+function createResourceObjectString(
+  loaderQuery,
+  sizes,
+  loaders,
+  resource,
+  ext,
+  placeholder,
+  lightweight,
+) {
   const contentType = mime.getType(ext);
 
-  const transformResource = loaderQuery.transformResource || ((resource, size) => resource + '?size=' + size)
+  const transformResource = loaderQuery.transformResource || ((r, size) => `${r}?size=${size}`);
 
-  const sources = buildSources(sizes, loaders, (size => transformResource(resource, size)));
+  const sources = buildSources(sizes, loaders, ((size) => transformResource(resource, size)));
 
   const srcSet = !lightweight
     ? `srcSet: ${stringifySrcSet(sources)},`
@@ -163,7 +168,7 @@ srcSetLoader.pitch = function srcSetLoaderPitch(remainingRequest) {
 
   const lightweight = isLightweight(loaderQuery, resourceQuery);
   if (typeof lightweight !== 'boolean') {
-    throw new TypeError(`srcset-loader: "?lightweight=${lightweight}" is invalid - expected a boolean.`);
+    throw new TypeError(`pwa-srcset-loader: "?lightweight=${lightweight}" is invalid - expected a boolean.`);
   }
 
   // check it isn't undefined so the resource can disable the loader configuration with `false`.
@@ -186,48 +191,48 @@ srcSetLoader.pitch = function srcSetLoaderPitch(remainingRequest) {
   const ext = path.extname(resource).substr(1);
 
   let outputString = createResourceObjectString(
-    loaderQuery, 
-    sizes, 
-    loaders, 
+    loaderQuery,
+    sizes,
+    loaders,
     resource,
-    ext, 
-    placeholder, 
-    lightweight
+    ext,
+    placeholder,
+    lightweight,
   );
-  
-  if (ext.toLowerCase() !== "webp") {
-    let wepbLoaders = loaders.slice(0);
-    let fileLoader = _.find(wepbLoaders, loader => {
-      return loader.indexOf("file-loader") >=0 ;
+
+  if (ext.toLowerCase() !== 'webp') {
+    const wepbLoaders = loaders.slice(0);
+    let fileLoader = wepbLoaders.find((loader) => {
+      return loader.indexOf('file-loader') >= 0;
     });
-    let fileLoaderIndex = _.findIndex(wepbLoaders, loader => {
-      return loader.indexOf("file-loader") >=0 ;
+    const fileLoaderIndex = wepbLoaders.findIndex((loader) => {
+      return loader.indexOf('file-loader') >= 0;
     });
     let webpLoader = null;
 
     if (!fileLoader) {
-     fileLoader = "file-loader?name=[hash].[ext].ext";
-     webpLoader = "webp-loader?quality=80";
-     wepbLoaders.push(fileLoader);
-     wepbLoaders.push(webpLoader); 
+      fileLoader = 'file-loader?name=[hash].[ext].ext';
+      webpLoader = 'webp-loader';
+      wepbLoaders.push(fileLoader);
+      wepbLoaders.push(webpLoader);
     } else {
-      let nameMatch = fileLoader.match(/name=([^&]*)&?/);
-      if ( nameMatch && nameMatch.length >=2 ){
+      const nameMatch = fileLoader.match(/name=([^&]*)&?/);
+      if (nameMatch && nameMatch.length >= 2) {
         wepbLoaders.splice(fileLoaderIndex, 1, fileLoader.replace(nameMatch[1], `${nameMatch[1]}.webp`));
-        webpLoader = "webp-loader?{quality:80}";
+        webpLoader = 'webp-loader?';
       }
     }
     if (webpLoader) {
       wepbLoaders.push(webpLoader);
     }
     outputString = `${outputString}, ${createResourceObjectString(
-      loaderQuery, 
-      sizes, 
-      wepbLoaders, 
+      loaderQuery,
+      sizes,
+      wepbLoaders,
       resource,
-      "webp", 
-      placeholder, 
-      lightweight
+      'webp',
+      placeholder,
+      lightweight,
     )}`;
   }
 

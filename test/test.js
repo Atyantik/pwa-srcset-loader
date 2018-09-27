@@ -1,13 +1,11 @@
 import { describe, it } from 'mocha';
-import chai from 'chai';
+import chai, { expect } from 'chai';
 import dirtyChai from 'dirty-chai';
 import spies from 'chai-spies';
 import { makeCompiler, runTest } from './util';
 
 chai.use(spies);
 chai.use(dirtyChai);
-
-const expect = chai.expect;
 
 const FILE_TYPES = /\.(jpe?g|png|gif|svg)$/i;
 const WHALE_IMG = './resources/whale.jpeg';
@@ -18,11 +16,45 @@ const TOR_IMG = './resources/tor-portrait.jpeg';
 const SRC_SET_FORMAT = /^((?:[a-z0-9A-Z]+?\.(?:jpe?g|svg|png|gif))(?: \d+[wx])?(,|$))+/;
 const FILE_FORMAT = /^[a-z0-9A-Z]+?\.(?:jpe?g|svg|png|gif)/;
 
+
+function validateImgGeneric(img, lightweight = false) {
+  if (lightweight) {
+    expect(img.srcSet).to.be.undefined();
+  } else {
+    expect(img.srcSet).to.match(SRC_SET_FORMAT, 'Invalid srcSet syntax');
+  }
+  // eslint-disable-next-line
+  for (const size of Object.keys(img.sources)) {
+    expect(img.sources[size]).to.match(FILE_FORMAT, 'Invalid URL');
+  }
+}
+
+function validatePlaceholder(placeholder, lightweight = false) {
+  expect(placeholder.url).to.be.a('string');
+  expect(placeholder.ratio).to.be.above(0, 'Ratio should be a float greater than zero');
+  expect(placeholder.color).to.be.an('array', 'Color should be an array of 4 numbers.');
+  expect(placeholder.color.length).to.equal(4, 'Color should be an array of 4 numbers.');
+  for (let i = 0; i < 3; i += 1) {
+    const channel = placeholder.color[i];
+    expect(channel).to.be.a('number');
+    expect(Number.isSafeInteger(channel)).to.equal(true, 'Not integer');
+    expect(channel).to.be.within(0, 255);
+  }
+  expect(placeholder.color[3]).to.be.a('number');
+  expect(placeholder.color[3]).to.be.within(0, 1, 'Alpha channel should be a float [0, 1]');
+  if (lightweight) {
+    expect(placeholder.url.startsWith('data:image/jpeg;base64,')).to.be.true('lightweight placeholders should not return the SVG wrapper.');
+  } else {
+    expect(placeholder.url.startsWith('data:image/svg+xml;base64,')).to.be.true('non-lightweight placeholders should return the SVG wrapper.');
+  }
+}
+
+
 describe('Resource Query', () => {
   const RULE = {
     test: FILE_TYPES,
     use: [
-      'srcset-loader',
+      'pwa-srcset-loader',
       'file-loader',
     ],
   };
@@ -49,19 +81,15 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
-
+      const { img } = window;
       expect(img).to.be.an('array');
-
-      for(var i in img) {
-        expect(img[i]).to.be.an('object');  
-
+      img.forEach((image, i) => {
+        expect(img[i]).to.be.an('object');
         // no size specified, return image with size default
         expect(Object.keys(img[i].sources)).to.deep.equal(['default']);
-
         validateImgGeneric(img[i]);
         validatePlaceholder(img[i].placeholder);
-      }
+      });
     });
   });
 
@@ -74,11 +102,10 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
-
-      for(var i in img) {
-        expect(img[i].placeholder.ratio).to.be.above(1, 'Aspect ratio for a landscape image should be greater than 1');
-      }
+      const { img } = window;
+      img.forEach((image) => {
+        expect(image.placeholder.ratio).to.be.above(1, 'Aspect ratio for a landscape image should be greater than 1');
+      });
     });
   });
 
@@ -91,12 +118,11 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
-
-      for (var i in img) {
-        expect(img[i].placeholder.ratio).to.be.above(0, 'Aspect ratio for a portrait image should be greater than 0');
-        expect(img[i].placeholder.ratio).to.be.below(1, 'Aspect ratio for a portrait image should be less than 1');
-      }
+      const { img } = window;
+      img.forEach((image) => {
+        expect(image.placeholder.ratio).to.be.above(0, 'Aspect ratio for a portrait image should be greater than 0');
+        expect(image.placeholder.ratio).to.be.below(1, 'Aspect ratio for a portrait image should be less than 1');
+      });
     });
   });
 
@@ -109,15 +135,14 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
+      const { img } = window;
 
-      for(var i in img) {
-        expect(img[i]).to.be.an('object');
-        expect(Object.keys(img[i].sources)).to.deep.equal(['200w', '300w']);
-
-        validateImgGeneric(img[i]);
-        expect(img[i].placeholder).to.be.undefined();
-      }
+      img.forEach((image) => {
+        expect(image).to.be.an('object');
+        expect(Object.keys(image.sources)).to.deep.equal(['200w', '300w']);
+        validateImgGeneric(image);
+        expect(image.placeholder).to.be.undefined();
+      });
     });
   });
 
@@ -130,14 +155,13 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
-      for (var i in img) {
-        expect(img[i]).to.be.an('object');
-        expect(Object.keys(img[i].sources)).to.deep.equal(['200w', '300w']);
-
-        validateImgGeneric(img[i]);
-        expect(img[i].placeholder).to.be.undefined();  
-      }
+      const { img } = window;
+      img.forEach((image) => {
+        expect(image).to.be.an('object');
+        expect(Object.keys(image.sources)).to.deep.equal(['200w', '300w']);
+        validateImgGeneric(image);
+        expect(image.placeholder).to.be.undefined();
+      });
     });
   });
 
@@ -150,15 +174,14 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
+      const { img } = window;
 
-      for (var i in img) {
-        expect(img[i]).to.be.an('object');
-        expect(Object.keys(img[i].sources)).to.deep.equal(['200w', '300w', 'default']);
-
-        validateImgGeneric(img[i]);
-        expect(img[i].placeholder).to.be.undefined();
-      }
+      img.forEach((image) => {
+        expect(image).to.be.an('object');
+        expect(Object.keys(image.sources)).to.deep.equal(['200w', '300w', 'default']);
+        validateImgGeneric(image);
+        expect(image.placeholder).to.be.undefined();
+      });
     });
   });
 
@@ -171,15 +194,14 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
+      const { img } = window;
 
-      for (var i in img) {
-        expect(img[i]).to.be.an('object');
-        expect(Object.keys(img[i].sources)).to.deep.equal(['200w', '300w']);
-
-        validateImgGeneric(img[i]);
-        validatePlaceholder(img[i].placeholder);
-      }
+      img.forEach((image) => {
+        expect(image).to.be.an('object');
+        expect(Object.keys(image.sources)).to.deep.equal(['200w', '300w']);
+        validateImgGeneric(image);
+        validatePlaceholder(image.placeholder);
+      });
     });
   });
 
@@ -192,18 +214,15 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
+      const { img } = window;
 
-      for (var i in img) {
-
-        expect(img[i]).to.be.an('object');
-
+      img.forEach((image) => {
+        expect(image).to.be.an('object');
         // no size specified, return image with size default
-        expect(Object.keys(img[i].sources)).to.deep.equal(['200w', '300w']);
-
-        validateImgGeneric(img[i], true);
-        validatePlaceholder(img[i].placeholder, true);
-      }
+        expect(Object.keys(image.sources)).to.deep.equal(['200w', '300w']);
+        validateImgGeneric(image, true);
+        validatePlaceholder(image.placeholder, true);
+      });
     });
   });
 
@@ -216,73 +235,30 @@ describe('Resource Query', () => {
     });
 
     return runTest(compiler, (window) => {
-      const img = window.img;
+      const { img } = window;
 
-      let promises = [];
+      const promises = [];
 
-      for (var i in img) {
-        expect(img[i]).to.be.an('object');
-
+      img.forEach((image) => {
+        expect(image).to.be.an('object');
         // no size specified, return image with size default
-        expect(Object.keys(img[i].sources)).to.deep.equal(['default']);
-
-        validateImgGeneric(img[i], true);
-        validatePlaceholder(img[i].placeholder, true);
-
+        expect(Object.keys(image.sources)).to.deep.equal(['default']);
+        validateImgGeneric(image, true);
+        validatePlaceholder(image.placeholder, true);
         promises.push(new Promise((resolve, reject) => {
           const imgTag = new window.Image();
-          imgTag.addEventListener("load", function() {
-            setTimeout(function (){
-              console.log(imgTag.width);
-              console.log(imgTag.height);
-              resolve();    
-            }, 1000);
+          imgTag.addEventListener('load', () => {
+            console.log(imgTag.width);
+            console.log(imgTag.height);
+            resolve();
           });
-
           imgTag.onerror = function onError(e) {
-            console.log(e);
             reject(e);
           };
-          imgTag.src = img[i].placeholder.url;
+          imgTag.src = image.placeholder.url;
         }));
-      }
+      });
       return Promise.all(promises);
     });
   }).timeout(10000);
 });
-
-function validateImgGeneric(img, lightweight = false) {
-  if (lightweight) {
-    expect(img.srcSet).to.be.undefined();
-  } else {
-    expect(img.srcSet).to.match(SRC_SET_FORMAT, 'Invalid srcSet syntax');
-  }
-
-  for (const size of Object.keys(img.sources)) {
-    expect(img.sources[size]).to.match(FILE_FORMAT, 'Invalid URL');
-  }
-}
-
-function validatePlaceholder(placeholder, lightweight = false) {
-  expect(placeholder.url).to.be.a('string');
-  expect(placeholder.ratio).to.be.above(0, 'Ratio should be a float greater than zero');
-  expect(placeholder.color).to.be.an('array', 'Color should be an array of 4 numbers.');
-
-  expect(placeholder.color.length).to.equal(4, 'Color should be an array of 4 numbers.');
-
-  for (let i = 0; i < 3; i++) {
-    const channel = placeholder.color[i];
-    expect(channel).to.be.a('number');
-    expect(Number.isSafeInteger(channel)).to.equal(true, 'Not integer');
-    expect(channel).to.be.within(0, 255);
-  }
-
-  expect(placeholder.color[3]).to.be.a('number');
-  expect(placeholder.color[3]).to.be.within(0, 1, 'Alpha channel should be a float [0, 1]');
-
-  if (lightweight) {
-    expect(placeholder.url.startsWith('data:image/jpeg;base64,')).to.be.true('lightweight placeholders should not return the SVG wrapper.');
-  } else {
-    expect(placeholder.url.startsWith('data:image/svg+xml;base64,')).to.be.true('non-lightweight placeholders should return the SVG wrapper.');
-  }
-}
