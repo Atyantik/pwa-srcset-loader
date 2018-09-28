@@ -9,8 +9,10 @@ before_install:
   - wget https://zlib.net/zlib-1.2.11.tar.gz
   - tar -xvzf zlib-1.2.11.tar.gz
   - cd zlib-1.2.11 && sudo ./configure --prefix=/lib/x86_64-linux-gnu && sudo make install
-  - [ -e /lib/x86_64-linux-gnu/libz.so.1 ] && sudo rm -rf /lib/x86_64-linux-gnu/libz.so.1
+  - (rm -rf /lib/x86_64-linux-gnu/libz.so.1 || true)
   - cd /lib/x86_64-linux-gnu/ && ls -s /lib/x86_64-linux-gnu/lib/libz.so.1.2.11 libz.so.1
   - cd $CURR_DIR
   - find /lib /usr -name 'libz.so*' -ls
 script: npm test
+
+
