@@ -13,8 +13,8 @@ const TOR_IMG = './resources/tor-portrait.jpeg';
 
 // matches the format
 // ((<path>( <size>)?)(,|$))+
-const SRC_SET_FORMAT = /^((?:[a-z0-9A-Z]+?\.(?:jpe?g|svg|png|gif))(?: \d+[wx])?(,|$))+/;
-const FILE_FORMAT = /^[a-z0-9A-Z]+?\.(?:jpe?g|svg|png|gif)/;
+const SRC_SET_FORMAT = /^((?:[a-z0-9A-Z]+?\.(?:jpe?g|svg|png|gif|webp))(?: \d+[wx])?(,|$))+/;
+const FILE_FORMAT = /^[a-z0-9A-Z]+?\.(?:jpe?g|svg|png|gif|webp)/;
 
 
 function validateImgGeneric(img, lightweight = false) {

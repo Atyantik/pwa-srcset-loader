@@ -202,29 +202,28 @@ srcSetLoader.pitch = function srcSetLoaderPitch(remainingRequest) {
 
   if (ext.toLowerCase() !== 'webp') {
     const wepbLoaders = loaders.slice(0);
-    let fileLoader = wepbLoaders.find((loader) => {
-      return loader.indexOf('file-loader') >= 0;
-    });
-    const fileLoaderIndex = wepbLoaders.findIndex((loader) => {
-      return loader.indexOf('file-loader') >= 0;
-    });
-    let webpLoader = null;
 
-    if (!fileLoader) {
-      fileLoader = 'file-loader?name=[hash].[ext].ext';
-      webpLoader = 'webp-loader';
-      wepbLoaders.push(fileLoader);
-      wepbLoaders.push(webpLoader);
-    } else {
-      const nameMatch = fileLoader.match(/name=([^&]*)&?/);
-      if (nameMatch && nameMatch.length >= 2) {
-        wepbLoaders.splice(fileLoaderIndex, 1, fileLoader.replace(nameMatch[1], `${nameMatch[1]}.webp`));
-        webpLoader = 'webp-loader?';
+    const fileLoader = this.loaders.find((e) => e.path.indexOf('file-loader') !== -1);
+    if (fileLoader) {
+      const fileLoaderIndex = wepbLoaders.findIndex((e) => e.indexOf('file-loader') !== -1);
+      const options = {};
+      Object.assign(options, fileLoader.options);
+      if (options && options.name) {
+        if (options.name.indexOf('[ext]') !== -1) {
+          options.name = options.name.replace('[ext]', 'webp');
+        } else {
+          options.name += '.webp';
+        }
+      } else {
+        options.name = '[name].webp';
       }
+
+      const queryString = Object.keys(options).map((key) => `${key}=${options[key]}`).join('&');
+      const newFileLoader = `${fileLoader.path}?${queryString}`;
+      wepbLoaders.splice(fileLoaderIndex, 1, newFileLoader);
+      wepbLoaders.push('webp-loader');
     }
-    if (webpLoader) {
-      wepbLoaders.push(webpLoader);
-    }
+
     outputString = `${outputString}, ${createResourceObjectString(
       loaderQuery,
       sizes,
