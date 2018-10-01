@@ -34,8 +34,9 @@ function createResizeRequest(size, existingLoaders, resource) {
     ? existingLoaders
     : [...existingLoaders, buildResizeLoader(size)];
 
-  const remainingRequest = rebuildRemainingRequest(loaders, resource);
-  return `require(${JSON.stringify(remainingRequest)})`;
+  return rebuildRemainingRequest(loaders, resource);
+  // const remainingRequest = rebuildRemainingRequest(loaders, resource);
+  // return `require(${JSON.stringify(remainingRequest)})`;
 }
 
 function toNumber(item) {
@@ -45,7 +46,7 @@ function toNumber(item) {
   return Number(item);
 }
 
-function createPlaceholderRequest(resource, size, lightweight) {
+async function createPlaceholderRequest(resource, size, lightweight, loaderReference) {
   const loaderOptions = {
     pathname: path.join(__dirname, './placeholder-loader'),
     query: {
@@ -58,27 +59,48 @@ function createPlaceholderRequest(resource, size, lightweight) {
     loaderOptions.query.size = actualSize;
   }
   const placeholderRequest = ['!', url.format(loaderOptions), resource].join('!');
-  return `require(${JSON.stringify(placeholderRequest)})`;
+  return new Promise((resolve, reject) => {
+    loaderReference.loadModule(placeholderRequest, (err, source) => {
+      if (err) return reject(err);
+      return resolve(source.replace(/module\.exports\s*=\s*/, '').replace(/;$/, ''));
+    });
+  });
 }
 
-function forEach(items, cb) {
-  if (Array.isArray(items)) {
-    return items.forEach(cb);
+async function asyncForEach(items, callback) {
+  if (!Array.isArray(items)) {
+    return callback(items);
   }
-
-  return cb(items);
+  for (let index = 0; index < items.length; index += 1) {
+    // eslint-disable-next-line
+    await callback(items[index], index, items);
+  }
+  return true;
 }
 
-function buildSources(sizes, loaders, resource) {
+async function buildSources(sizes, loaders, loaderReference, resource) {
   const sources = {};
 
-  forEach(sizes, (size) => {
+  await asyncForEach(sizes, async (size) => {
     if (size != null && size !== DEFAULT_SIZE && !/\d+w/.test(size)) {
       throw new TypeError(`pwa-srcset-loader: Received size "${size}" does not match the format "\\d+w" nor "${DEFAULT_SIZE}"`);
     }
 
     const actualSize = size || DEFAULT_SIZE;
-    sources[actualSize] = createResizeRequest(actualSize, loaders, resource(size));
+    await new Promise((resolve, reject) => {
+      loaderReference.loadModule(
+        createResizeRequest(
+          actualSize,
+          loaders,
+          resource(size),
+        ), (err, source) => {
+          if (err) return reject(err);
+          sources[actualSize] = source.replace(/module.exports\s*=\s*/g, '').replace(/;$/, '');
+          return resolve(source);
+        },
+      );
+    });
+    // sources[actualSize] = createResizeRequest(actualSize, loaders, resource(size));
   });
 
   return sources;
@@ -128,7 +150,7 @@ function isLightweight(loaderQuery, resourceQuery) {
   return false;
 }
 
-function createResourceObjectString(
+async function createResourceObjectString(
   loaderQuery,
   sizes,
   loaders,
@@ -136,19 +158,25 @@ function createResourceObjectString(
   ext,
   placeholder,
   lightweight,
+  loaderReference,
 ) {
   const contentType = mime.getType(ext);
 
   const transformResource = loaderQuery.transformResource || ((r, size) => `${r}?size=${size}`);
 
-  const sources = buildSources(sizes, loaders, ((size) => transformResource(resource, size)));
+  const sources = await buildSources(
+    sizes,
+    loaders,
+    loaderReference,
+    ((size) => transformResource(resource, size)),
+  );
 
   const srcSet = !lightweight
     ? `srcSet: ${stringifySrcSet(sources)},`
     : '';
 
   const placeholderScript = placeholder
-    ? `placeholder: ${createPlaceholderRequest(resource, placeholder, lightweight)},`
+    ? `placeholder: ${await createPlaceholderRequest(resource, placeholder, lightweight, loaderReference)},`
     : '';
   return `{
     sources: ${stringifySources(sources)},
@@ -165,6 +193,7 @@ export default function srcSetLoader(content) {
 srcSetLoader.pitch = function srcSetLoaderPitch(remainingRequest) {
   const loaderQuery = parseQuery(this.query);
   const resourceQuery = parseQuery(this.resourceQuery);
+  const callback = this.async();
 
   const lightweight = isLightweight(loaderQuery, resourceQuery);
   if (typeof lightweight !== 'boolean') {
@@ -184,58 +213,78 @@ srcSetLoader.pitch = function srcSetLoaderPitch(remainingRequest) {
 
   // neither is requested, no need to run this loader.
   if (!placeholder && !sizes) {
-    return undefined;
+    return callback(null);
   }
 
   const [loaders, resource] = splitRemainingRequest(remainingRequest);
   const ext = path.extname(resource).substr(1);
 
-  let outputString = createResourceObjectString(
-    loaderQuery,
-    sizes,
-    loaders,
-    resource,
-    ext,
-    placeholder,
-    lightweight,
-  );
+  const self = this;
 
-  if (ext.toLowerCase() !== 'webp') {
-    const wepbLoaders = loaders.slice(0);
-
-    const fileLoader = this.loaders.find((e) => e.path.indexOf('file-loader') !== -1);
-    if (fileLoader) {
-      const fileLoaderIndex = wepbLoaders.findIndex((e) => e.indexOf('file-loader') !== -1);
-      const options = {};
-      Object.assign(options, fileLoader.options);
-      if (options && options.name) {
-        if (options.name.indexOf('[ext]') !== -1) {
-          options.name = options.name.replace('[ext]', 'webp');
-        } else {
-          options.name += '.webp';
-        }
-      } else {
-        options.name = '[name].webp';
-      }
-
-      const queryString = Object.keys(options).map((key) => `${key}=${options[key]}`).join('&');
-      const newFileLoader = `${fileLoader.path}?${queryString}`;
-      wepbLoaders.splice(fileLoaderIndex, 1, newFileLoader);
-      wepbLoaders.push('webp-loader');
-    }
-
-    outputString = `${outputString}, ${createResourceObjectString(
+  return (async () => {
+    let outputString = await createResourceObjectString(
       loaderQuery,
       sizes,
-      wepbLoaders,
+      loaders,
       resource,
-      'webp',
+      ext,
       placeholder,
       lightweight,
-    )}`;
-  }
+      self,
+    );
 
-  return `module.exports = [${outputString}];`;
+    if (ext.toLowerCase() !== 'webp') {
+      const wepbLoaders = loaders.slice(0);
+
+      const fileLoader = this.loaders.find((e) => e.path.indexOf('file-loader') !== -1);
+      if (fileLoader) {
+        const fileLoaderIndex = wepbLoaders.findIndex((e) => {
+          return e.indexOf('file-loader') !== -1;
+        });
+
+        let queryString = '';
+
+        if (typeof fileLoader.options === 'string') {
+          queryString = fileLoader.options;
+          if (queryString.indexOf('[ext]') !== -1) {
+            queryString = queryString.replace('[ext]', 'webp');
+          } else {
+            const nameMatch = queryString.match(/name=([^&]*)&?/);
+            if (nameMatch && nameMatch.length >= 2) {
+              queryString = queryString.replace(nameMatch[1], `${nameMatch[1]}.webp`);
+            }
+          }
+        } else if (typeof fileLoader.options === 'object') {
+          const options = {};
+          Object.assign(options, fileLoader.options);
+          if (options && options.name) {
+            if (options.name.indexOf('[ext]') !== -1) {
+              options.name = options.name.replace('[ext]', 'webp');
+            } else {
+              options.name += '.webp';
+            }
+          } else {
+            options.name = '[name].webp';
+          }
+          queryString = JSON.stringify(options);
+        }
+        const newFileLoader = `${fileLoader.path}?${queryString}`;
+        wepbLoaders.splice(fileLoaderIndex, 1, newFileLoader);
+        wepbLoaders.push('webp-loader');
+      }
+      outputString = `${outputString}, ${await createResourceObjectString(
+        loaderQuery,
+        sizes,
+        wepbLoaders,
+        resource,
+        'webp',
+        placeholder,
+        lightweight,
+        self,
+      )}`;
+    }
+    callback(null, `module.exports = [${outputString}];`);
+  })();
 };
 
 // webpack pitch loaders expect commonJS
