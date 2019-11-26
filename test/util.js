@@ -78,6 +78,12 @@ export function runTest(compiler, assert) {
 
       const bundleJs = stats.compilation.assets[BUNDLE].source();
 
+      jsdom.defaultDocumentFeatures = {
+        FetchExternalResources: ['script', 'img'],
+        ProcessExternalResources: ['script', 'img'],
+        MutationEvents: ['2.0'],
+        QuerySelector: false,
+      };
       const { JSDOM } = jsdom;
       const dom = new JSDOM(`
         <!DOCTYPE html>
