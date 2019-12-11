@@ -1,8 +1,10 @@
 import { describe, it } from 'mocha';
-import chai, { expect } from 'chai';
+import chai from 'chai';
 import dirtyChai from 'dirty-chai';
 import spies from 'chai-spies';
 import { makeCompiler, runTest } from './util';
+
+const { expect } = chai;
 
 chai.use(spies);
 chai.use(dirtyChai);
@@ -66,9 +68,10 @@ describe('Resource Query', () => {
       },
       rule: RULE,
     });
-
-    return runTest(compiler, (window) => {
-      expect(window.img).to.be.a('string');
+    return runTest(compiler, async (window) => {
+      const img = window.img.default ? window.img.default : window.img;
+      expect(img).to.be.a('string');
+      // expect(1).to.be.a('number');
     });
   });
 
@@ -259,9 +262,9 @@ describe('Resource Query', () => {
           // img.setAttribute('src', image.placeholder.url);
           // console.log(image.placeholder.url);
           imgTag.src = image.placeholder.url;
-          if (image.placeholder.url.length > 20) {
-            resolve();
-          }
+          // if (image.placeholder.url.length > 20) {
+          //   resolve();
+          // }
         }));
       });
       return Promise.all(promises);

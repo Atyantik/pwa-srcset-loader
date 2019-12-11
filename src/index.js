@@ -95,7 +95,10 @@ async function buildSources(sizes, loaders, loaderReference, resource) {
           resource(size),
         ), (err, source) => {
           if (err) return reject(err);
-          sources[actualSize] = source.replace(/module.exports\s*=\s*/g, '').replace(/;$/, '');
+          sources[actualSize] = source
+            .replace(/module.exports\s*=\s*/g, '')
+            .replace(/export\s*default\s*/g, '')
+            .replace(/;$/, '');
           return resolve(source);
         },
       );

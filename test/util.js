@@ -77,13 +77,6 @@ export function runTest(compiler, assert) {
       }
 
       const bundleJs = stats.compilation.assets[BUNDLE].source();
-
-      jsdom.defaultDocumentFeatures = {
-        FetchExternalResources: ['script', 'img'],
-        ProcessExternalResources: ['script', 'img'],
-        MutationEvents: ['2.0'],
-        QuerySelector: false,
-      };
       const { JSDOM } = jsdom;
       const dom = new JSDOM(`
         <!DOCTYPE html>
@@ -99,19 +92,18 @@ export function runTest(compiler, assert) {
         virtualConsole: (new jsdom.VirtualConsole()).sendTo(console),
       });
       const { window } = dom;
-      window.onload = function () {
+      window.document.addEventListener('load', () => {
         const result = assert(window);
         function cleanUp() {
           window.close();
           resolve();
         }
-
         if (result && result.then) {
           result.then(cleanUp);
         } else {
           cleanUp();
         }
-      };
+      });
     });
   });
 }
